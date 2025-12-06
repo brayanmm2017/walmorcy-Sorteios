@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sorteio com Explosão</title>
+  <style>
+    :root{
+      --bg:#000; /* background agora vem da imagem */
+      --card:#1b2433bf;
+      --accent:#ffdd57;
+      --accent-2:#000000;
+      --glass: rgba(255,255,255,0.08);
+    }
+    *{box-sizing:border-box}
+    html,body{
+      height:100%;
+      margin:0;
+      font-family:Inter, system-ui, Arial, Helvetica, sans-serif;
+      background-image: url('./img/image.png');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+      color:#fff
+    }
+    #instagram{
+      color: rgb(255, 0, 119);
+    }
+
+    /* container */
+    .wrap{max-width:980px;margin:28px auto;padding:18px}
+
+    .card{
+      background-color: #472607;
+      border-radius:14px;padding:18px;box-shadow:0 10px 30px rgba(3,10,20,0.6);display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap
+    }
+
+    .controls{flex:1;min-width:260px}
+    .preview{flex:1;min-width:300px;display:flex;align-items:center;justify-content:center;position:relative}
+
+    h1{margin:6px 0 12px;font-size:20px}
+    label{display:block;font-size:13px;color:#cbd5e1;margin-bottom:6px}
+    .row{display:flex;gap:10px;align-items:center}
+
+    input[type=number], input[type=text], select{width:100%;padding:10px;border-radius:10px;border:none;background:var(--glass);color:#fff;font-size:15px;outline:none}
+    .field{margin-bottom:12px}
+    .small{width:120px}
+    button{padding:12px 16px;border-radius:10px;border:none;cursor:pointer;font-weight:700;background:linear-gradient(90deg,var(--accent-2),#ff8a00);color:#111}
+    button[disabled]{opacity:.6;cursor:not-allowed}
+
+    /* preview area */
+    .stage{
+      width:clamp(280px,60vw,520px);
+      height:clamp(280px,60vw,520px);
+      border-radius:18px;
+      background:rgba(0,0,0,0.55);
+      backdrop-filter: blur(8px);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      position:relative;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,0.1)
+    }
+    .big-number{font-size:clamp(48px,18vw,160px);font-weight:900;color:var(--accent);text-shadow:0 6px 30px rgba(255,221,87,0.12);z-index:5}
+
+    /* overlay countdown */
+    .overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:linear-gradient(180deg, rgba(2,6,23,0.55), rgba(2,6,23,0.5));z-index:30}
+    .count{font-size:clamp(44px,16vw,120px);font-weight:900;color:#fff}
+
+    /* explosion particles */
+    .particle{position:absolute;width:10px;height:10px;border-radius:50%;pointer-events:none;z-index:40;opacity:0}
+    .particle.big{width:14px;height:14px}
+
+    /* winner list modal */
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:linear-gradient(180deg, rgba(2,6,23,0.6), rgba(2,6,23,0.8));z-index:80}
+    .modal-card{width:90%;max-width:720px;padding:18px;border-radius:14px;background:linear-gradient(180deg,#071022,#0b1222);box-shadow:0 20px 60px rgba(2,6,23,0.6);text-align:center}
+    .winners{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin-top:12px}
+    .winner{background:linear-gradient(90deg,#111827,#0f1724);padding:14px 20px;border-radius:12px;font-size:28px;font-weight:800;color:var(--accent);min-width:100px}
+
+    /* responsive */
+    @media(max-width:700px){.card{flex-direction:column}.controls{order:2}.preview{order:1}}
+
+    /* simple confetti animation using keyframes for scale/alpha */
+    @keyframes particleMove {
+      to{transform: translate(var(--tx), var(--ty)) rotate(var(--rot)); opacity:1}
+    }
+
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+      <h1>Walmorcy Sorteios</h1>
+      <div style="font-size:19px;color:#ffffff"><svg id="instagram" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-instagram" viewBox="0 0 16 16">
+  <path d="M8 0C5.829 0 5.556.01 4.703.048 3.85.088 3.269.222 2.76.42a3.9 3.9 0 0 0-1.417.923A3.9 3.9 0 0 0 .42 2.76C.222 3.268.087 3.85.048 4.7.01 5.555 0 5.827 0 8.001c0 2.172.01 2.444.048 3.297.04.852.174 1.433.372 1.942.205.526.478.972.923 1.417.444.445.89.719 1.416.923.51.198 1.09.333 1.942.372C5.555 15.99 5.827 16 8 16s2.444-.01 3.298-.048c.851-.04 1.434-.174 1.943-.372a3.9 3.9 0 0 0 1.416-.923c.445-.445.718-.891.923-1.417.197-.509.332-1.09.372-1.942C15.99 10.445 16 10.173 16 8s-.01-2.445-.048-3.299c-.04-.851-.175-1.433-.372-1.941a3.9 3.9 0 0 0-.923-1.417A3.9 3.9 0 0 0 13.24.42c-.51-.198-1.092-.333-1.943-.372C10.443.01 10.172 0 7.998 0zm-.717 1.442h.718c2.136 0 2.389.007 3.232.046.78.035 1.204.166 1.486.275.373.145.64.319.92.599s.453.546.598.92c.11.281.24.705.275 1.485.039.843.047 1.096.047 3.231s-.008 2.389-.047 3.232c-.035.78-.166 1.203-.275 1.485a2.5 2.5 0 0 1-.599.919c-.28.28-.546.453-.92.598-.28.11-.704.24-1.485.276-.843.038-1.096.047-3.232.047s-2.39-.009-3.233-.047c-.78-.036-1.203-.166-1.485-.276a2.5 2.5 0 0 1-.92-.598 2.5 2.5 0 0 1-.6-.92c-.109-.281-.24-.705-.275-1.485-.038-.843-.046-1.096-.046-3.233s.008-2.388.046-3.231c.036-.78.166-1.204.276-1.486.145-.373.319-.64.599-.92s.546-.453.92-.598c.282-.11.705-.24 1.485-.276.738-.034 1.024-.044 2.515-.045zm4.988 1.328a.96.96 0 1 0 0 1.92.96.96 0 0 0 0-1.92m-4.27 1.122a4.109 4.109 0 1 0 0 8.217 4.109 4.109 0 0 0 0-8.217m0 1.441a2.667 2.667 0 1 1 0 5.334 2.667 2.667 0 0 1 0-5.334"/>
+</svg>walmorcyneto</div>
+    </div>
+
+    <div class="card">
+      <div class="controls">
+        <div class="field">
+          <label>Intervalo (mínimo)</label>
+          <input id="min" type="number" value="1" />
+        </div>
+        <div class="field">
+          <label>Intervalo (máximo)</label>
+          <input id="max" type="number" value="100" />
+        </div>
+        <div class="field row">
+          <div style="flex:1">
+            <label>Quantos números em cada sorteio</label>
+            <input id="numbersPer" type="number" value="1" min="1" />
+          </div>
+          <div style="width:120px">
+            <label>Quantidade de Sorteios</label>
+            <input id="winnersCount" type="number" value="1" min="1" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Contagem (segundos)</label>
+          <input id="countdown" type="number" value="5" min="1" />
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:8px">
+          <button id="start">Iniciar Sorteio</button>
+          <button id="reset" style="background-color:#000">Limpar</button>
+        </div>
+
+        <div style="margin-top:14px;font-size:13px;color:#9aa8bf"></div>
+      </div>
+
+      <div class="preview">
+        <div class="stage" id="stage">
+          <div class="overlay" id="overlay">
+            <div class="count" id="countDisplay">5</div>
+          </div>
+          <div class="big-number" id="bigNumber"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- modal de exibicao de ganhadores -->
+  <div class="modal" id="modal">
+    <div class="modal-card">
+      <h2>Ganhadores</h2>
+      <div class="winners" id="winnerList"></div>
+      <div style="margin-top:12px"><button id="closeModal">Fechar</button></div>
+    </div>
+  </div>
+
+  <script>
+    const minEl = document.getElementById('min');
+    const maxEl = document.getElementById('max');
+    const numbersPerEl = document.getElementById('numbersPer');
+    const winnersCountEl = document.getElementById('winnersCount');
+    const countdownEl = document.getElementById('countdown');
+    const startBtn = document.getElementById('start');
+    const resetBtn = document.getElementById('reset');
+    const overlay = document.getElementById('overlay');
+    const countDisplay = document.getElementById('countDisplay');
+    const bigNumber = document.getElementById('bigNumber');
+    const stage = document.getElementById('stage');
+    const modal = document.getElementById('modal');
+    const winnerList = document.getElementById('winnerList');
+    const closeModal = document.getElementById('closeModal');
+
+    // cria partículas de explosão simples
+    function explode(xCenter, yCenter, count){
+      const particles = [];
+      for(let i=0;i<count;i++){
+        const p = document.createElement('div');
+        p.classList.add('particle');
+        if(Math.random()>0.8) p.classList.add('big');
+        const color = ['#ff3b8a','#ffd166','#06d6a0','#06a3ff'][Math.floor(Math.random()*4)];
+        p.style.background = color;
+        // pos inicial no centro
+        p.style.left = xCenter + 'px';
+        p.style.top = yCenter + 'px';
+
+        // direcao aleatoria
+        const angle = Math.random()*Math.PI*2;
+        const speed = 80 + Math.random()*140; // px
+        const tx = Math.cos(angle)*speed + 'px';
+        const ty = Math.sin(angle)*speed + 'px';
+        const rot = (Math.random()*360)+'deg';
+
+        p.style.setProperty('--tx', tx);
+        p.style.setProperty('--ty', ty);
+        p.style.setProperty('--rot', rot);
+
+        stage.appendChild(p);
+        particles.push(p);
+
+        // aplica animacao
+        requestAnimationFrame(()=>{
+          p.style.transition = 'transform 700ms cubic-bezier(.1,.9,.2,1), opacity 600ms linear';
+          p.style.opacity = '1';
+          p.style.transform = `translate(${tx}, ${ty}) rotate(${rot}) scale(${0.9+Math.random()*0.7})`;
+        });
+      }
+
+      // remove depois
+      setTimeout(()=>{
+        particles.forEach(p => p.remove());
+      }, 900);
+    }
+
+    function randomUnique(min, max, amount){
+      const pool = [];
+      for(let i=min;i<=max;i++) pool.push(i);
+      // se pedir mais do que tem, retorna embaralhado
+      if(amount>=pool.length) return pool.sort(()=>Math.random()-0.5);
+      const result = [];
+      while(result.length<amount){
+        const idx = Math.floor(Math.random()*pool.length);
+        result.push(pool.splice(idx,1)[0]);
+      }
+      return result;
+    }
+
+    // lógica principal: para cada ganhador, gerar numbersPer numeros e mostrar com explosao antes de revelar
+    async function runDraw(){
+      const min = parseInt(minEl.value);
+      const max = parseInt(maxEl.value);
+      const numbersPer = parseInt(numbersPerEl.value) || 1;
+      const winnersCount = parseInt(winnersCountEl.value) || 1;
+      let seconds = parseInt(countdownEl.value) || 3;
+
+      if(isNaN(min) || isNaN(max) || min>max){alert('Intervalo inválido');return}
+      // verifica se há números suficientes para cada sorteio (por ganhador)
+      if(numbersPer > (max-min+1)) { alert('Quantidade de números por sorteio maior que o intervalo'); return }
+      if(winnersCount > (max-min+1) && numbersPer===1) { /* ainda válido: alguns ganhadores podem repetir se quiser, deixamos passar */ }
+
+      startBtn.disabled = true;
+      winnerList.innerHTML = '';
+
+      const allWinners = [];
+
+      for(let g=0; g<winnersCount; g++){
+        // mostrar contagem
+        overlay.style.display = 'flex';
+        countDisplay.textContent = seconds;
+        // anima contagem em loop
+        for(let t=seconds; t>0; t--){
+          countDisplay.textContent = t;
+          await wait(1000);
+        }
+
+        // faz explosao no centro do stage
+        const rect = stage.getBoundingClientRect();
+        const cx = rect.width/2; const cy = rect.height/2;
+        // cria explosao visual
+        explode(cx, cy, 28);
+
+        // deixa um pequeno delay para a explosão terminar antes de mostrar
+        await wait(420);
+
+        // agora sortea os numeros (sem repeticao entre os números desse ganhador)
+        const nums = randomUnique(min, max, numbersPer);
+        // mostra no display em forma concatenada ou separada
+        bigNumber.textContent = nums.join(' - ');
+
+        // guarda para histórico
+        allWinners.push(nums);
+
+        // esconde overlay e pequena pausa para o usuário ver
+        overlay.style.display = 'none';
+        await wait(700);
+      }
+
+      // mostrar modal com todos os ganhadores
+      showWinners(allWinners);
+      startBtn.disabled = false;
+    }
+
+    function wait(ms){return new Promise(r=>setTimeout(r,ms));}
+
+    function showWinners(list){
+      winnerList.innerHTML = '';
+      list.forEach((nums, i)=>{
+        const d = document.createElement('div');
+        d.className = 'winner';
+        d.textContent = nums.join(' - ');
+        winnerList.appendChild(d);
+      });
+      modal.style.display = 'flex';
+    }
+
+    startBtn.addEventListener('click', ()=>{ runDraw(); });
+    resetBtn.addEventListener('click', ()=>{ bigNumber.textContent='—'; winnerList.innerHTML=''; modal.style.display='none'; });
+    closeModal.addEventListener('click', ()=>{ modal.style.display='none'; });
+
+    // acessibilidade: enter inicia
+    document.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !startBtn.disabled) runDraw(); });
+
+  </script>
+</body>
+</html>
